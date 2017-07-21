@@ -60,17 +60,32 @@ get "/lists/new" do
   erb :new_list, layout: :layout
 end
 
+# Validate list index
+def load_list(index)
+  list = session[:lists][index] if index && session[:lists][index]
+  return list if list
+
+  session[:error] = "The specified list was not found."
+  redirect "/lists"
+end
+
 # View specific Todo List
 get "/lists/:index" do
   @list_index = params[:index].to_i
-  @list = @lists[@list_index]
-  erb :list, layout: :layout
+  @list = load_list(@list_index)
+
+  if @list_index >= @lists.size
+    session[:error] = "The specified list was not found."
+    redirect "/lists"
+  else
+    erb :list, layout: :layout
+  end
 end
 
 # Edit an existing todo list
 get "/lists/:index/edit" do
   @list_index = params[:index].to_i
-  @list = @lists[@list_index]
+  @list = load_list(@list_index)
   erb :edit_list, layout: :layout
 end
 
@@ -114,7 +129,7 @@ post "/lists/:index" do
   if error
     session[:error] = error
     @list_index = index
-    @list = @lists[@list_index]
+    @list = load_list(@list_index)
     erb :edit_list, layout: :layout
   else
     session[:lists][index][:name] = list_name
@@ -134,7 +149,7 @@ end
 # Add a new todo to a list
 post "/lists/:list_index/todos" do
   @list_index = params[:list_index].to_i
-  @list = session[:lists][@list_index]
+  @list = load_list(@list_index)
   text = params[:todo].strip
 
   error = error_for_todo(text)
@@ -151,7 +166,7 @@ end
 # Remove todo from todo list
 post "/lists/:list_index/todos/:todo_index/destroy" do
   @list_index = params[:list_index].to_i
-  @list = session[:lists][@list_index]
+  @list = load_list(@list_index)
   todo_index = params[:todo_index].to_i
   @list[:todos].delete_at(todo_index)
 
@@ -162,7 +177,7 @@ end
 # Update the status of a todo
 post "/lists/:list_index/todos/:todo_index" do
   @list_index = params[:list_index].to_i
-  @list = session[:lists][@list_index]
+  @list = load_list(@list_index)
   todo_index = params[:todo_index].to_i
 
   is_completed = params[:completed] == "true"
@@ -175,7 +190,7 @@ end
 # Update the status to completed for all todo items on a list
 post "/lists/:list_index/complete_all" do
   @list_index = params[:list_index].to_i
-  @list = session[:lists][@list_index]
+  @list = load_list(@list_index)
 
   @list[:todos].each do |todo|
     todo[:completed] = true
